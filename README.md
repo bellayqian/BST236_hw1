@@ -6,3 +6,8 @@ This repository contains the code for Homework 1. The live website can be viewed
 - Interactive Pac-Man game with ghosts and scoring system
 - Auto-updating arXiv papers page
 - Responsive design that works on mobile and desktop
+
+## Development Process
+- Used Claude to help with HTML/CSS structure
+- Implemented GitHub Actions for paper updates
+- Tested functionality locally before deploying
