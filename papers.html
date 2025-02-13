@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Latest arXiv Papers</title>
+    <style>
+        :root {
+            --primary-color: #2a9d8f;
+            --secondary-color: #264653;
+            --accent-color: #e9c46a;
+            --text-color: #333;
+            --background-color: #f8f9fa;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: var(--text-color);
+            background-color: var(--background-color);
+            margin: 0;
+            padding: 0;
+        }
+
+        nav {
+            background-color: var(--primary-color);
+            padding: 1rem 0;
+        }
+
+        nav ul {
+            list-style: none;
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            margin: 0;
+            padding: 0;
+        }
+
+        nav a {
+            color: white;
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.3s ease;
+        }
+
+        nav a:hover {
+            color: var(--accent-color);
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 2rem;
+            color: var(--secondary-color);
+        }
+
+        .papers {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        .paper {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            transition: transform 0.2s ease;
+        }
+
+        .paper:hover {
+            transform: translateY(-2px);
+        }
+
+        .paper h2 {
+            color: var(--primary-color);
+            margin-top: 0;
+            margin-bottom: 0.5rem;
+        }
+
+        .paper-meta {
+            color: #666;
+            font-size: 0.9rem;
+            margin-bottom: 1rem;
+        }
+
+        .paper-abstract {
+            margin-bottom: 1rem;
+        }
+
+        .paper-links {
+            display: flex;
+            gap: 1rem;
+        }
+
+        .paper-links a {
+            background-color: var(--primary-color);
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            text-decoration: none;
+            font-size: 0.9rem;
+            transition: background-color 0.2s ease;
+        }
+
+        .paper-links a:hover {
+            background-color: var(--secondary-color);
+        }
+
+        .last-updated {
+            text-align: center;
+            color: #666;
+            font-size: 0.9rem;
+            margin-bottom: 2rem;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <nav>
+        <ul>
+            <li><a href="index.html">Home</a></li>
+            <li><a href="pacman.html">Pac-Man Game</a></li>
+            <li><a href="papers.html">Latest Papers</a></li>
+        </ul>
+    </nav>
+
+    <div class="container">
+        <div class="header">
+            <h1>Latest arXiv Papers</h1>
+            <p>Machine Learning, Deep Learning, and Artificial Intelligence</p>
+        </div>
+
+        <div class="last-updated" id="lastUpdated"></div>
+        
+        <div class="papers" id="papersList">
+            <!-- Papers will be loaded here -->
+        </div>
+    </div>
+
+    <script>
+        async function loadPapers() {
+            try {
+                const response = await fetch('data/papers.json');
+                const data = await response.json();
+                
+                // Update last updated time
+                const lastUpdated = new Date(data.last_updated);
+                document.getElementById('lastUpdated').textContent = 
+                    `Last updated: ${lastUpdated.toLocaleString()}`;
+                
+                // Create paper elements
+                const papersList = document.getElementById('papersList');
+                papersList.innerHTML = ''; // Clear existing content
+                
+                data.papers.forEach(paper => {
+                    const paperElement = document.createElement('div');
+                    paperElement.className = 'paper';
+                    
+                    paperElement.innerHTML = `
+                        <h2>${paper.title}</h2>
+                        <div class="paper-meta">
+                            <strong>Authors:</strong> ${paper.authors.join(', ')}
+                            <br>
+                            <strong>Published:</strong> ${new Date(paper.published).toLocaleDateString()}
+                        </div>
+                        <div class="paper-abstract">
+                            ${paper.abstract}
+                        </div>
+                        <div class="paper-links">
+                            <a href="${paper.pdf_url}" target="_blank">PDF</a>
+                            <a href="${paper.arxiv_url}" target="_blank">arXiv</a>
+                        </div>
+                    `;
+                    
+                    papersList.appendChild(paperElement);
+                });
+            } catch (error) {
+                console.error('Error loading papers:', error);
+                document.getElementById('papersList').innerHTML = 
+                    '<p>Error loading papers. Please try again later.</p>';
+            }
+        }
+
+        // Load papers when page loads
+        document.addEventListener('DOMContentLoaded', loadPapers);
+    </script>
+</body>
+</html>

@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pac-Man Game</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background-color: #f8f9fa;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        nav {
+            width: 100%;
+            background-color: #2a9d8f;
+            padding: 1rem 0;
+            margin-bottom: 20px;
+        }
+
+        nav ul {
+            list-style: none;
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            margin: 0;
+            padding: 0;
+        }
+
+        nav a {
+            color: white;
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.3s ease;
+        }
+
+        nav a:hover {
+            color: #e9c46a;
+        }
+
+        #gameCanvas {
+            border: 2px solid #333;
+            background: black;
+        }
+
+        .game-container {
+            text-align: center;
+        }
+
+        .score {
+            font-size: 24px;
+            margin: 20px 0;
+            color: #264653;
+        }
+
+        .controls {
+            margin: 20px 0;
+            padding: 15px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .lives {
+            font-size: 24px;
+            margin: 20px 0;
+            color: #264653;
+        }
+
+        .game-over {
+            display: none;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .game-over button {
+            margin-top: 10px;
+            padding: 10px 20px;
+            background: #2a9d8f;
+            border: none;
+            border-radius: 5px;
+            color: white;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <nav>
+        <ul>
+            <li><a href="index.html">Home</a></li>
+            <li><a href="pacman.html">Pac-Man Game</a></li>
+            <li><a href="papers.html">Latest Papers</a></li>
+        </ul>
+    </nav>
+
+    <div class="game-container">
+        <div class="score">Score: <span id="score">0</span></div>
+        <div class="lives">Lives: <span id="lives">3</span></div>
+        <canvas id="gameCanvas" width="400" height="400"></canvas>
+        <div class="controls">
+            <p>Use arrow keys to move Pac-Man</p>
+            <p>Collect all dots while avoiding ghosts!</p>
+        </div>
+    </div>
+
+    <div id="gameOver" class="game-over">
+        <h2 id="gameEndMessage">Game Over!</h2>
+        <p>Final Score: <span id="finalScore">0</span></p>
+        <button onclick="restartGame()">Play Again</button>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const scoreElement = document.getElementById('score');
+        const livesElement = document.getElementById('lives');
+        const gameOverElement = document.getElementById('gameOver');
+
+        // Game constants
+        const CELL_SIZE = 20;
+        const GRID_WIDTH = canvas.width / CELL_SIZE;
+        const GRID_HEIGHT = canvas.height / CELL_SIZE;
+        
+        // Game state
+        let score = 0;
+        let lives = 3;
+        let gameRunning = true;
+
+        // Pac-Man
+        let pacman = {
+            x: CELL_SIZE * 1,
+            y: CELL_SIZE * 1,
+            direction: 0,
+            speed: CELL_SIZE,
+            mouthOpen: true
+        };
+
+        // Ghosts
+        class Ghost {
+            constructor(x, y, color) {
+                this.x = x * CELL_SIZE;
+                this.y = y * CELL_SIZE;
+                this.color = color;
+                this.direction = Math.floor(Math.random() * 4);
+                this.speed = CELL_SIZE;
+                this.lastMove = 0;
+            }
+
+            draw() {
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                ctx.arc(this.x + CELL_SIZE/2, this.y + CELL_SIZE/2, CELL_SIZE/2 - 2, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            move() {
+                if (Date.now() - this.lastMove < 200) return; // Speed control
+
+                const directions = [[0, -1], [1, 0], [0, 1], [-1, 0]];
+                const possibleDirections = [];
+
+                // Check which directions are valid
+                for (let i = 0; i < 4; i++) {
+                    const newX = this.x + directions[i][0] * CELL_SIZE;
+                    const newY = this.y + directions[i][1] * CELL_SIZE;
+                    if (canMove(newX, newY)) {
+                        possibleDirections.push(i);
+                    }
+                }
+
+                // Randomly choose a valid direction
+                if (possibleDirections.length > 0) {
+                    this.direction = possibleDirections[Math.floor(Math.random() * possibleDirections.length)];
+                    this.x += directions[this.direction][0] * CELL_SIZE;
+                    this.y += directions[this.direction][1] * CELL_SIZE;
+                    this.lastMove = Date.now();
+                }
+            }
+
+            checkCollision(pacmanX, pacmanY) {
+                const distance = Math.sqrt(
+                    Math.pow(this.x - pacmanX, 2) + 
+                    Math.pow(this.y - pacmanY, 2)
+                );
+                return distance < CELL_SIZE;
+            }
+        }
+
+        let ghosts = [
+            new Ghost(18, 1, 'red'),
+            new Ghost(18, 18, 'pink'),
+            new Ghost(1, 18, 'cyan')
+        ];
+
+        // Grid layout: 0 = empty, 1 = wall, 2 = dot
+        let grid = [];
+        
+        // Initialize grid
+        function initGrid() {
+            for (let y = 0; y < GRID_HEIGHT; y++) {
+                grid[y] = [];
+                for (let x = 0; x < GRID_WIDTH; x++) {
+                    if (x === 0 || x === GRID_WIDTH - 1 || y === 0 || y === GRID_HEIGHT - 1) {
+                        grid[y][x] = 1;
+                    } else if (x % 2 === 0 && y % 2 === 0) {
+                        grid[y][x] = 1;
+                    } else {
+                        grid[y][x] = 2;
+                    }
+                }
+            }
+            grid[1][1] = 0;
+        }
+
+        function drawCell(x, y, type) {
+            if (type === 1) {
+                ctx.fillStyle = '#0000FF';
+                ctx.fillRect(x * CELL_SIZE, y * CELL_SIZE, CELL_SIZE, CELL_SIZE);
+            } else if (type === 2) {
+                ctx.fillStyle = '#FFFFFF';
+                ctx.beginPath();
+                ctx.arc(x * CELL_SIZE + CELL_SIZE/2, y * CELL_SIZE + CELL_SIZE/2, 3, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        function drawPacman() {
+            ctx.fillStyle = '#FFFF00';
+            ctx.beginPath();
+            let mouthAngle = pacman.mouthOpen ? 0.2 : 0;
+            let startAngle = pacman.direction + mouthAngle;
+            let endAngle = pacman.direction - mouthAngle;
+            ctx.arc(
+                pacman.x + CELL_SIZE/2,
+                pacman.y + CELL_SIZE/2,
+                CELL_SIZE/2 - 2,
+                startAngle * Math.PI,
+                endAngle * Math.PI
+            );
+            ctx.lineTo(pacman.x + CELL_SIZE/2, pacman.y + CELL_SIZE/2);
+            ctx.fill();
+        }
+
+        function draw() {
+            if (!gameRunning) return;
+
+            ctx.fillStyle = '#000000';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            for (let y = 0; y < GRID_HEIGHT; y++) {
+                for (let x = 0; x < GRID_WIDTH; x++) {
+                    drawCell(x, y, grid[y][x]);
+                }
+            }
+
+            drawPacman();
+            ghosts.forEach(ghost => ghost.draw());
+        }
+
+        function canMove(x, y) {
+            const gridX = Math.floor(x / CELL_SIZE);
+            const gridY = Math.floor(y / CELL_SIZE);
+            return gridX >= 0 && gridX < GRID_WIDTH && 
+                   gridY >= 0 && gridY < GRID_HEIGHT && 
+                   grid[gridY][gridX] !== 1;
+        }
+
+        function checkCollisions() {
+            for (let ghost of ghosts) {
+                if (ghost.checkCollision(pacman.x, pacman.y)) {
+                    lives--;
+                    livesElement.textContent = lives;
+                    
+                    if (lives <= 0) {
+                        gameOver();
+                    } else {
+                        resetPositions();
+                    }
+                    return;
+                }
+            }
+        }
+
+        function resetPositions() {
+            pacman.x = CELL_SIZE * 1;
+            pacman.y = CELL_SIZE * 1;
+            ghosts = [
+                new Ghost(18, 1, 'red'),
+                new Ghost(18, 18, 'pink'),
+                new Ghost(1, 18, 'cyan')
+            ];
+        }
+
+        function gameOver() {
+            gameRunning = false;
+            document.getElementById('finalScore').textContent = score;
+            gameOverElement.style.display = 'block';
+        }
+
+        function restartGame() {
+            score = 0;
+            lives = 3;
+            gameRunning = true;
+            scoreElement.textContent = score;
+            livesElement.textContent = lives;
+            gameOverElement.style.display = 'none';
+            initGrid();
+            resetPositions();
+            gameLoop();
+        }
+
+        document.addEventListener('keydown', (event) => {
+            if (!gameRunning) return;
+
+            const key = event.key;
+            let newX = pacman.x;
+            let newY = pacman.y;
+
+            switch(key) {
+                case 'ArrowLeft':
+                    newX -= pacman.speed;
+                    pacman.direction = 1;
+                    break;
+                case 'ArrowRight':
+                    newX += pacman.speed;
+                    pacman.direction = 0;
+                    break;
+                case 'ArrowUp':
+                    newY -= pacman.speed;
+                    pacman.direction = 1.5;
+                    break;
+                case 'ArrowDown':
+                    newY += pacman.speed;
+                    pacman.direction = 0.5;
+                    break;
+            }
+
+            if (canMove(newX, newY)) {
+                pacman.x = newX;
+                pacman.y = newY;
+
+                const gridX = Math.floor(pacman.x / CELL_SIZE);
+                const gridY = Math.floor(pacman.y / CELL_SIZE);
+                if (grid[gridY][gridX] === 2) {
+                    grid[gridY][gridX] = 0;
+                    score += 10;
+                    scoreElement.textContent = score;
+                }
+            }
+        });
+
+        function checkWin() {
+            // Check if there are any dots left
+            for (let y = 0; y < GRID_HEIGHT; y++) {
+                for (let x = 0; x < GRID_WIDTH; x++) {
+                    if (grid[y][x] === 2) {
+                        return false;
+                    }
+                }
+            }
+            return true;
+        }
+
+        function gameLoop() {
+            if (!gameRunning) return;
+
+            pacman.mouthOpen = !pacman.mouthOpen;
+            ghosts.forEach(ghost => ghost.move());
+            checkCollisions();
+            
+            // Check for win condition
+            if (checkWin()) {
+                gameRunning = false;
+                document.getElementById('gameEndMessage').textContent = 'You Win!';
+                document.getElementById('finalScore').textContent = score;
+                gameOverElement.style.display = 'block';
+                return;
+            }
+            
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
+
+        initGrid();
+        gameLoop();
+    </script>
+</body>
+</html>
