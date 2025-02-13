@@ -163,7 +163,8 @@
             papersList.innerHTML = '<div class="loading-message">Loading papers...</div>';
             
             try {
-                const response = await fetch('data/papers.json');
+                // Use the absolute path for GitHub Pages
+                const response = await fetch('/BST236_hw1/data/papers.json');
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
@@ -174,8 +175,8 @@
                 document.getElementById('lastUpdated').textContent = 
                     `Last updated: ${lastUpdated.toLocaleString()}`;
                 
-                // Create paper elements
-                papersList.innerHTML = ''; // Clear existing content
+                // Clear existing content
+                papersList.innerHTML = '';
                 
                 if (!data.papers || data.papers.length === 0) {
                     papersList.innerHTML = '<div class="loading-message">No papers found. Please check back later.</div>';
@@ -192,13 +193,15 @@
                             <strong>Authors:</strong> ${paper.authors.join(', ')}
                             <br>
                             <strong>Published:</strong> ${new Date(paper.published).toLocaleDateString()}
+                            <br>
+                            <strong>Categories:</strong> ${paper.categories.join(', ')}
                         </div>
                         <div class="paper-abstract">
                             ${paper.abstract}
                         </div>
                         <div class="paper-links">
-                            <a href="${paper.pdf_url}" target="_blank">PDF</a>
-                            <a href="${paper.arxiv_url}" target="_blank">arXiv</a>
+                            <a href="${paper.pdf_url}" target="_blank" rel="noopener">PDF</a>
+                            <a href="${paper.arxiv_url}" target="_blank" rel="noopener">arXiv</a>
                         </div>
                     `;
                     
@@ -208,8 +211,8 @@
                 console.error('Error loading papers:', error);
                 papersList.innerHTML = `
                     <div class="loading-message">
-                        <p>Error loading papers. The GitHub Action might still be running to generate the data.</p>
-                        <p>Please check back in a few minutes.</p>
+                        <p>Error loading papers: ${error.message}</p>
+                        <p>Details: ${error.toString()}</p>
                         <button onclick="loadPapers()" style="margin-top: 10px; padding: 8px 16px; background: #2a9d8f; color: white; border: none; border-radius: 4px; cursor: pointer;">
                             Try Again
                         </button>
